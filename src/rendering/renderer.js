@@ -1,11 +1,18 @@
-import { CONFIG } from './config.js';
-import { getEntitySpriteList } from './entities.js';
-import { getProjectileSpriteList } from './projectiles.js';
+import { CONFIG } from '../core/config.js';
+import { getEntitySpriteList } from '../game/entities.js';
+import { getProjectileSpriteList } from '../game/projectiles.js';
 import { projectSprites, drawSprites } from './sprites.js';
 import { TEX_SIZE } from './textures.js';
+import { drawFloorAndSky } from './floorceiling.js';
 
 const WALL_COLORS = CONFIG.wallColors;
 let wallTextures = null;
+let fogStyle = '';  // cached fog rgba string
+
+// FPS counter state
+let fpsFrames = 0;
+let fpsLastTime = performance.now();
+let fpsDisplay = 0;
 
 export function setTextures(textures) {
   wallTextures = textures;
@@ -16,11 +23,8 @@ export function draw(ctx, canvas, player, map, rayResult, depthBuffer, entities,
   const h = canvas.height;
   const horizon = Math.floor(h / 2 + player.pitch * h);
 
-  // Clear / draw ceiling and floor
-  ctx.fillStyle = CONFIG.ceilingColor;
-  ctx.fillRect(0, 0, w, horizon);
-  ctx.fillStyle = CONFIG.floorColor;
-  ctx.fillRect(0, horizon, w, h - horizon);
+  // Draw textured floor and sky/ceiling
+  drawFloorAndSky(ctx, w, h, horizon, player, rayResult, wallTextures, map.sky);
 
   // Draw wall columns
   const hits = rayResult.hits;
@@ -80,19 +84,27 @@ export function draw(ctx, canvas, player, map, rayResult, depthBuffer, entities,
         ctx.fillRect(col, ledgeY, 1, 2);
       }
     }
+
+    // Fog overlay on wall column
+    const fog = fogFactor(hit.perpDist);
+    if (fog > 0.01) {
+      ctx.fillStyle = fogRgba(fog);
+      ctx.fillRect(col, drawStart, 1, drawHeight);
+    }
   }
 
   // Fill side faces at height transitions (makes tall blocks look solid)
-  ctx.fillStyle = '#2a2a2a';
   for (let col = 1; col < w; col++) {
     const dd = Math.abs(colDepth[col] - colDepth[col - 1]);
     if (dd > 1.5) continue; // different walls, skip
     const diff = colTop[col] - colTop[col - 1];
     if (diff > 2) {
-      // Current column shorter — fill gap above it (left side face)
+      const sideFog = fogFactor(colDepth[col - 1]);
+      ctx.fillStyle = fogRgba(Math.max(sideFog, 0.6));
       ctx.fillRect(col, colTop[col - 1], 1, diff);
     } else if (diff < -2) {
-      // Previous column shorter — fill gap above it (right side face)
+      const sideFog = fogFactor(colDepth[col]);
+      ctx.fillStyle = fogRgba(Math.max(sideFog, 0.6));
       ctx.fillRect(col - 1, colTop[col], 1, -diff);
     }
   }
@@ -100,9 +112,11 @@ export function draw(ctx, canvas, player, map, rayResult, depthBuffer, entities,
   // Collect all sprites (entities + projectiles)
   const spriteList = getEntitySpriteList(entities).concat(getProjectileSpriteList(projectiles));
 
-  // Project and draw sprites
+  // Project and draw sprites (pass fog for distance shading)
   const projected = projectSprites(spriteList, player, rayResult, canvas, depthBuffer);
-  drawSprites(ctx, projected, depthBuffer, h);
+  const spriteFog = (dist) => fogFactor(dist);
+  spriteFog.rgba = fogRgba;
+  drawSprites(ctx, projected, depthBuffer, h, spriteFog);
 
   // HUD: crosshair
   const cx = w / 2;
@@ -160,6 +174,19 @@ export function draw(ctx, canvas, player, map, rayResult, depthBuffer, entities,
   ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
   ctx.fillStyle = hpFill > 0.3 ? 'rgba(50,220,50,0.8)' : 'rgba(220,50,50,0.9)';
   ctx.fillRect(hpBarX, hpBarY, Math.floor(hpBarW * hpFill), hpBarH);
+
+  // FPS counter
+  fpsFrames++;
+  const now = performance.now();
+  if (now - fpsLastTime >= 500) {
+    fpsDisplay = Math.round(fpsFrames / ((now - fpsLastTime) / 1000));
+    fpsFrames = 0;
+    fpsLastTime = now;
+  }
+  const fontSize = Math.max(10, Math.floor(h / 50));
+  ctx.font = `${fontSize}px monospace`;
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText(`${fpsDisplay} FPS`, Math.floor(w * 0.02), fontSize + Math.floor(h * 0.02));
 
   // Minimap (top-right corner)
   drawMinimap(ctx, w, h, player, map, entities, projectiles);
@@ -233,4 +260,15 @@ function drawMinimap(ctx, canvasW, canvasH, player, map, entities, projectiles) 
   ctx.moveTo(pcx, pcy);
   ctx.lineTo(pcx + Math.cos(player.angle) * dirLen, pcy + Math.sin(player.angle) * dirLen);
   ctx.stroke();
+}
+
+export function fogFactor(dist) {
+  if (dist <= CONFIG.fogStart) return 0;
+  if (dist >= CONFIG.fogEnd) return CONFIG.fogMaxAlpha;
+  return ((dist - CONFIG.fogStart) / (CONFIG.fogEnd - CONFIG.fogStart)) * CONFIG.fogMaxAlpha;
+}
+
+function fogRgba(alpha) {
+  const [r, g, b] = CONFIG.fogColor;
+  return `rgba(${r},${g},${b},${alpha})`;
 }

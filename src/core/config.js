@@ -1,7 +1,7 @@
 export const CONFIG = {
   // Rendering
   fov: 66 * (Math.PI / 180),   // 66 degrees in radians
-  renderScale: 1.0,             // 1.0 = native, 0.5 = half res (retro/perf)
+  renderScale: 1.0,             // 1.0 = native, adaptive scaling adjusts down if needed
   maxRayDist: 64,               // fog cutoff distance in tiles
 
   // Colors
@@ -12,6 +12,12 @@ export const CONFIG = {
     2: { light: '#88b', dark: '#669' },
     3: { light: '#8b8', dark: '#696' },
   },
+
+  // Fog
+  fogStart: 4,                  // distance (tiles) where fog begins
+  fogEnd: 20,                   // distance where fog reaches max density
+  fogMaxAlpha: 0.75,            // max fog opacity (< 1 keeps distant walls visible)
+  fogColor: [0, 0, 0],          // RGB fog color
 
   // Player movement
   walkSpeed: 3.5,

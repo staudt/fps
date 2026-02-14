@@ -44,7 +44,7 @@ export function projectSprites(spriteList, player, rayResult, canvas, depthBuffe
   return projected;
 }
 
-export function drawSprites(ctx, projected, depthBuffer, canvasHeight) {
+export function drawSprites(ctx, projected, depthBuffer, canvasHeight, fogFn) {
   const w = depthBuffer.length;
 
   for (let i = 0; i < projected.length; i++) {
@@ -71,6 +71,23 @@ export function drawSprites(ctx, projected, depthBuffer, canvasHeight) {
       for (let col = startX; col < endX; col++) {
         if (p.transformY < depthBuffer[col]) {
           ctx.fillRect(col, Math.max(0, p.drawStartY), 1, p.drawEndY - p.drawStartY);
+        }
+      }
+    }
+
+    // Fog overlay on sprite
+    if (fogFn) {
+      const fog = fogFn(p.transformY);
+      if (fog > 0.01) {
+        const drawTop = Math.max(0, p.drawStartY);
+        const drawBot = Math.min(canvasHeight, p.drawEndY);
+        if (drawBot > drawTop) {
+          ctx.fillStyle = fogFn.rgba(fog);
+          for (let col = startX; col < endX; col++) {
+            if (p.transformY < depthBuffer[col]) {
+              ctx.fillRect(col, drawTop, 1, drawBot - drawTop);
+            }
+          }
         }
       }
     }

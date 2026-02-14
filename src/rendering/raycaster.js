@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
 
 export function cast(player, map, screenWidth, depthBuffer) {
   const angle = player.angle + player.recoilOffset;

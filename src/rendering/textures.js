@@ -14,6 +14,12 @@ export async function loadTextures() {
   for (const id of Object.keys(procedural)) {
     textures[id] = await tryLoadImage(id, procedural[id]);
   }
+
+  // Floor/ceiling/sky textures — pixel data for scanline rendering
+  textures.floor = generateFloor();
+  textures.ceiling = generateCeiling();
+  textures.sky = generateSky();
+
   return textures;
 }
 
@@ -172,6 +178,100 @@ function generateMetal() {
   addNoise(ctx, s, 0.02);
 
   return { canvas: c, dark: generateDarkVariant(c) };
+}
+
+function generateFloor() {
+  const s = TEX_SIZE;
+  const c = createTexCanvas();
+  const ctx = c.getContext('2d');
+
+  // Concrete tile base
+  ctx.fillStyle = '#666';
+  ctx.fillRect(0, 0, s, s);
+
+  // Grid lines every 32px
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(0, 0, s, 1);
+  ctx.fillRect(0, 32, s, 1);
+  ctx.fillRect(0, 0, 1, s);
+  ctx.fillRect(32, 0, 1, s);
+
+  // Highlight edge
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(1, 1, s - 1, 1);
+  ctx.fillRect(1, 33, s - 1, 1);
+  ctx.fillRect(1, 1, 1, s - 1);
+  ctx.fillRect(33, 1, 1, s - 1);
+
+  addNoise(ctx, s, 0.06);
+
+  const data = ctx.getImageData(0, 0, s, s).data;
+  return { data, size: s };
+}
+
+function generateCeiling() {
+  const s = TEX_SIZE;
+  const c = createTexCanvas();
+  const ctx = c.getContext('2d');
+
+  // Light gray panel base
+  ctx.fillStyle = '#888';
+  ctx.fillRect(0, 0, s, s);
+
+  // Panel lines every 16px
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  for (let y = 0; y < s; y += 16) {
+    ctx.fillRect(0, y, s, 1);
+  }
+  for (let x = 0; x < s; x += 16) {
+    ctx.fillRect(x, 0, 1, s);
+  }
+
+  // Highlight edges
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  for (let y = 1; y < s; y += 16) {
+    ctx.fillRect(0, y, s, 1);
+  }
+  for (let x = 1; x < s; x += 16) {
+    ctx.fillRect(x, 0, 1, s);
+  }
+
+  addNoise(ctx, s, 0.04);
+
+  const data = ctx.getImageData(0, 0, s, s).data;
+  return { data, size: s };
+}
+
+function generateSky() {
+  const w = 512;
+  const h = 200;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext('2d');
+
+  // Gradient: dark blue top → lighter blue-gray at horizon
+  for (let y = 0; y < h; y++) {
+    const t = y / h;
+    const r = Math.floor(20 + t * 60);
+    const g = Math.floor(20 + t * 50);
+    const b = Math.floor(60 + t * 100);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(0, y, w, 1);
+  }
+
+  // Stars in upper 60%
+  for (let i = 0; i < 120; i++) {
+    const sx = Math.floor(Math.random() * w);
+    const sy = Math.floor(Math.random() * h * 0.6);
+    const brightness = 150 + Math.floor(Math.random() * 105);
+    const size = Math.random() < 0.15 ? 2 : 1;
+    ctx.fillStyle = `rgb(${brightness},${brightness},${brightness})`;
+    ctx.fillRect(sx, sy, size, size);
+  }
+
+  const data = ctx.getImageData(0, 0, w, h).data;
+  return { data, width: w, height: h };
 }
 
 function addNoise(ctx, size, intensity) {

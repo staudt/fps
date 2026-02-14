@@ -10,6 +10,7 @@ export async function loadMap(url) {
     height,
     player: data.player,
     entities: data.entities || [],
+    sky: data.sky !== undefined ? data.sky : true,
     isWall(x, y) {
       if (x < 0 || y < 0 || x >= width || y >= height) return true;
       return tiles[y][x] > 0;

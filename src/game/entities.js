@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
 
 const ENTITY_TYPES = {
   grunt: { hp: 100, speed: 2.0, color: '#e44', scale: 1.0 },
