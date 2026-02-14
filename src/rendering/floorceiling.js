@@ -137,8 +137,8 @@ export function drawFloorAndSky(ctx, w, h, horizon, player, rayResult, textures,
   const fogMax = CONFIG.fogMaxAlpha;
   if (fogMax > 0 && horizonClamped < h) {
     const grad = ctx.createLinearGradient(0, horizonClamped, 0, h);
-    grad.addColorStop(0, `rgba(${fr},${fg},${fb},0)`);
-    grad.addColorStop(1, `rgba(${fr},${fg},${fb},${fogMax})`);
+    grad.addColorStop(0, `rgba(${fr},${fg},${fb},${fogMax})`);
+    grad.addColorStop(1, `rgba(${fr},${fg},${fb},0)`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, horizonClamped, w, h - horizonClamped);
   }
@@ -146,8 +146,8 @@ export function drawFloorAndSky(ctx, w, h, horizon, player, rayResult, textures,
   // Fog gradient on ceiling (indoor only — sky doesn't get fog)
   if (!useSky && fogMax > 0 && horizonClamped > 0) {
     const grad = ctx.createLinearGradient(0, horizonClamped, 0, 0);
-    grad.addColorStop(0, `rgba(${fr},${fg},${fb},0)`);
-    grad.addColorStop(1, `rgba(${fr},${fg},${fb},${fogMax})`);
+    grad.addColorStop(0, `rgba(${fr},${fg},${fb},${fogMax})`);
+    grad.addColorStop(1, `rgba(${fr},${fg},${fb},0)`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, horizonClamped);
   }
